@@ -1,6 +1,6 @@
 #Simple Raycaster
 
-![Application Screenshot](Capture.jpg)
+![Application Screenshot](Capture.PNG)
 
 How to Run:
 
