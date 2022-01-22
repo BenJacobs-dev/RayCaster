@@ -29,7 +29,7 @@ public class NewUI extends Application{
 	Map map;
 	ObservableList<Node> nodeList, mapGridList, castLinesList, wallTileList;
 	ArrayList<WallTilePoly> displayList;
-	int displaySize = 1000, gridSize = 10, mapSize = 250/gridSize, FOV = 100, wallCounter;
+	int displaySize = 1000, gridSize = 10, mapSize = 250/gridSize, FOV = 100, wallCounter, displayCounter = 0;
 	Circle playerSprite;
 	Line dirLine;
 	final double MIDLOOK = Math.PI/2, FULLROTATION = Math.PI*2, THIRDROTATION = Math.PI*3/2, PI = Math.PI, DEGTORAD = Math.PI/180;
@@ -114,9 +114,9 @@ public class NewUI extends Application{
     	wallCounter = 0; //displayList.clear();
 		double fov = FOV*DEGTORAD, dir = map.player.dir;
 		updateCastLinesUIIndividual(dir);
-		List<WallTilePoly> tempList = displayList.subList(0, wallCounter);
+		List<WallTilePoly> tempList = new ArrayList<WallTilePoly>(displayList.subList(0, wallCounter));
 		Collections.sort(tempList, comparator);
-		System.out.println(tempList.size());
+		//System.out.println(tempList.size());
 		wallTileList.setAll(tempList);
 		for(int i = 0, j; i < map.map.length; i++)for(j = 0; j < map.map[i].length; j++)if(map.map[i][j] > 1000000) map.map[i][j] -= 1000000; 
     }
@@ -349,10 +349,23 @@ public class NewUI extends Application{
                 	createCastLine(mapX+1, mapY+1, Color.YELLOW);
         		}
         	}
+//        	if((leftDir-FOV/1.75 < 0 ? leftDir+FOV/1.75 > dir || FULLROTATION+(leftDir-FOV/1.75) < dir : false)) {
+//    			leftDir = FULLROTATION+(leftDir-FOV/2) < dir ? FULLROTATION+leftDir : leftDir;
+//    		}
+//    		else if((leftDir+FOV/1.75 > FULLROTATION ? (leftDir+FOV/1.75)-FULLROTATION > dir || leftDir-FOV/1.75 < dir : false)) {
+//    			leftDir = (leftDir+FOV/1.75)-FULLROTATION > dir ? leftDir-FULLROTATION : leftDir;
+//    		}
+//        	if((rightDir-FOV/1.75 < 0 ? rightDir+FOV/1.75 > dir || FULLROTATION+(rightDir-FOV/1.75) < dir : false)) {
+//    			rightDir = FULLROTATION+(rightDir-FOV/2) < dir ? FULLROTATION+rightDir : rightDir;
+//    		}
+//    		else if((rightDir+FOV/1.75 > FULLROTATION ? (rightDir+FOV/1.75)-FULLROTATION > dir || rightDir-FOV/1.75 < dir : false)) {
+//    			rightDir = (rightDir+FOV/1.75)-FULLROTATION > dir ? rightDir-FULLROTATION : rightDir;
+//    		}
 			if(displayList.size() <= wallCounter) {
 				displayList.add(new WallTilePoly());
-				displayList.get(displayList.size()-1).setFill(new Color(Math.random(),Math.random(),Math.random(),1));
-			}
+				System.out.println(System.currentTimeMillis());
+    			displayList.get(displayList.size()-1).setFill(new Color(Math.random(),Math.random(),Math.random(),1));
+    		}
 			WallTilePoly wallTile = displayList.get(wallCounter++);
 			wallTile.dist = leftDist;
 			if(middleDir < -1000) {
@@ -385,8 +398,10 @@ public class NewUI extends Application{
 	    		
 	    		if(displayList.size() <= wallCounter) {
 	    			displayList.add(new WallTilePoly());
+	    			System.out.println(System.currentTimeMillis());
 	    			displayList.get(displayList.size()-1).setFill(new Color(Math.random(),Math.random(),Math.random(),1));
 	    		}
+	    		
 	    		wallTile = displayList.get(wallCounter++);
 	    		list = wallTile.getPoints();
 	    		list.clear();

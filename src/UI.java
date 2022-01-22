@@ -9,6 +9,7 @@ import javafx.scene.input.*;
 import javafx.scene.shape.*;
 import javafx.scene.paint.*;
 import javafx.scene.image.*;
+import javafx.scene.effect.*;
 import javafx.geometry.*;
 import javafx.event.*;
 import javafx.collections.*;
@@ -24,6 +25,9 @@ import java.nio.file.*;
 
 public class UI extends Application{
 
+	private int mapSize = 300, gridSize = 25, fovMain = 90, wallCountMain = 1500, screenWidth = 1500, time, fpsCounter, maxdof = 15, enemyCount = gridSize, animate = 0;
+	private boolean drawCastLines, makeMaze = false, useWallPatterns = true;
+
 	private Stage stage;
 	private Font bigFont = new Font("Courier New", 32);
 	private Map map;
@@ -36,9 +40,7 @@ public class UI extends Application{
 	private LinkedList<StationaryEffect> sEffectList;
 	private Line dirLine;
 	private Circle playerSprite;
-	private int mapSize = 300, gridSize = 10, fovMain = 90, wallCountMain = 1500, screenWidth = 1500, time, fpsCounter, maxdof = 15;
 	private double vertLookPos = Math.PI/2;
-	private boolean drawCastLines, makeMaze = true;
 	private Group castLines, display;
 	private final double MIDLOOK = Math.PI/2, FULLROTATION = Math.PI*2, THIRDROTATION = Math.PI*3/2, PI = Math.PI, DEGTORAD = Math.PI/180;
 	private Rectangle floor, sky;
@@ -69,7 +71,7 @@ public class UI extends Application{
 		counterWalls = 0;
 		
 		if(makeMaze) {
-			map = Map.makeMaze((gridSize & 1) != 1 ? ++gridSize : gridSize, wallPatterns.length-1);
+			map = Map.makeMaze(gridSize+1-(gridSize%2), wallPatterns.length-1);
 		}
 		else {
 			map = new Map(gridSize, gridSize, 7, wallPatterns.length-1);
@@ -276,7 +278,7 @@ public class UI extends Application{
     	Paint color, img;
     	double[] colorValues;
     	double colorDist;
-    	counterWalls++;
+    	counterWalls+=animate;
     	
     	double rayX, rayY, xOffset = 0, yOffset = 0, aTan, nTan, distY, distX, fRayX, fRayY;
     	
@@ -389,45 +391,56 @@ public class UI extends Application{
     		//Rectangle Code//
         	
         	colorDist = Math.min(rectHeight, 1000)/2500;
-        	
-        	if(distX == distY) {
-        		if(dir>MIDLOOK && dir<THIRDROTATION) {
-        			wallSliceNum = (int)((counterWalls/3)+16*(fRayX%1));
-        		}
-        		else {
-        			wallSliceNum = (counterWalls/3)+15 - (int)(16*(fRayX%1));
-        		}
-        		try {
-        			img = wallPatterns[wallNumY][wallSliceNum%16];
-        		}
-        		catch(ArrayIndexOutOfBoundsException e) {
-        			img = Color.BLACK;
-        		}
-        		if(drawCastLines) {
-        			colorValues = colorList.get(wallNumY);
-                   	color = new Color(colorValues[0]*colorDist, colorValues[1]*colorDist, colorValues[2]*colorDist, 1);
-               		createCastLine(fRayX, fRayY, i, color);
-               	}
+        	if(useWallPatterns) {
+	        	if(distX == distY) {
+	        		if(dir>MIDLOOK && dir<THIRDROTATION) {
+	        			wallSliceNum = (int)((counterWalls/3)+16*(fRayX%1));
+	        		}
+	        		else {
+	        			wallSliceNum = (counterWalls/3)+15 - (int)(16*(fRayX%1));
+	        		}
+	        		try {
+	        			img = wallPatterns[wallNumY][wallSliceNum%16];
+	        		}
+	        		catch(ArrayIndexOutOfBoundsException e) {
+	        			img = Color.BLACK;
+	        		}
+	        		if(drawCastLines) {
+	        			colorValues = colorList.get(wallNumY);
+	                   	color = new Color(colorValues[0]*colorDist, colorValues[1]*colorDist, colorValues[2]*colorDist, 1);
+	               		createCastLine(fRayX, fRayY, i, color);
+	               	}
+	        	}
+	        	else {
+	        		if(dir < PI) {
+	        			wallSliceNum = (int)((counterWalls/3)+16*(rayY%1));
+	        		}
+	        		else {
+	        			wallSliceNum = (counterWalls/3) + 15 - (int)(16*(rayY%1));
+	        		}
+	        		try {
+	        			img = wallPatterns[wallNumX][wallSliceNum%16];
+	        		}
+	        		catch(ArrayIndexOutOfBoundsException e) {
+	        			img = Color.BLACK;
+	        		}
+	       			if(drawCastLines) {
+	               		colorValues = colorList.get(wallNumX);
+	                   	color = new Color(colorValues[0]*colorDist, colorValues[1]*colorDist, colorValues[2]*colorDist, 1);
+	               		createCastLine(rayX, rayY, i, color);
+	               	}
+	        	}
         	}
-        	else {
-        		if(dir < PI) {
-        			wallSliceNum = (int)((counterWalls/3)+16*(rayY%1));
-        		}
-        		else {
-        			wallSliceNum = (counterWalls/3) + 15 - (int)(16*(rayY%1));
-        		}
-        		try {
-        			img = wallPatterns[wallNumX][wallSliceNum%16];
-        		}
-        		catch(ArrayIndexOutOfBoundsException e) {
-        			img = Color.BLACK;
-        		}
-       			if(drawCastLines) {
-               		colorValues = colorList.get(wallNumX);
-                   	color = new Color(colorValues[0]*colorDist, colorValues[1]*colorDist, colorValues[2]*colorDist, 1);
-               		createCastLine(rayX, rayY, i, color);
-               	}
-        	}
+	        else {
+	        	if(distX == distY) {
+	            	colorValues = colorList.get(wallNumY);
+	               	img = new Color(colorValues[0]*colorDist, colorValues[1]*colorDist, colorValues[2]*colorDist, 1);
+	        	}
+	        	else {
+	            	colorValues = colorList.get(wallNumX);
+	               	img = new Color(colorValues[0]*colorDist, colorValues[1]*colorDist, colorValues[2]*colorDist, 1);
+	        	}
+	        }
         	//System.out.println("Vert X: " + fRayX + ", Vert Y: " + fRayY + ", Horz X: "+ rayX + ", Horz Y: " + rayY);
         	
     		curRect = wallsList[i];
@@ -443,250 +456,6 @@ public class UI extends Application{
     	floor.setHeight(1000+midLine);
     	sky.setHeight(500-midLine);
     	
-    }
-    
-    public void updateWallsSingle(double fovIn) {
-    	 
-    	double fov = fovIn*DEGTORAD, recCount = wallsList.length;
-    	double fovOffsetAmount = fov/(recCount-1);
-    	double dir = map.player.dir + fov/2;
-    	if(dir > FULLROTATION) {dir-=FULLROTATION;} 
-    	double rectHeight;
-    	WallTile curRect;
-    	double midLine = 500*(MIDLOOK-vertLookPos);
-    	Paint color, img;
-    	double[] colorValues;
-    	double colorDist;
-    	
-    	double rayX, rayY, rayXH, rayYH, rayXV, rayYV, xOffsetH, yOffsetH, xOffsetV, yOffsetV, curOffsetH, curOffsetV, aTan, nTan, distY, distX, fRayX, fRayY;
-    	
-    	for(int i = 0, mapX = 0, mapY = 0, dof, wallNumX = 0, wallNumY = 0, wallSliceNum; i < recCount; i++) {
-    		
-    		//RayCasting Code//
-    		
-    		distX = 1000000;
-    		distY = 1000001;
-    		
-    		if(dir < 0) {dir+=FULLROTATION;}
-    		
-    		aTan=Math.tan(dir);
-        	nTan=1/Math.tan(dir);
-        	dof = 0;
-        	
-        	//Get All Offsets//
-        	
-        	//down
-        	if(dir<MIDLOOK || dir>THIRDROTATION) {
-        		yOffsetV=1; 
-        		xOffsetV=yOffsetV*aTan;
-        		rayYV=(int)map.player.height+1.00001; 
-        		rayXV=(map.player.height-rayYV)*-aTan+map.player.width; 
-        	}
-        	//up
-        	else if(dir>MIDLOOK && dir<THIRDROTATION) {
-        		yOffsetV=-1; 
-        		xOffsetV=yOffsetV*aTan;
-        		rayYV=(int)map.player.height-0.00001; 
-        		rayXV=(map.player.height-rayYV)*-aTan+map.player.width; 
-        		}
-        	else {
-        		xOffsetV= 1000000; 
-        		yOffsetV= 1000001;
-        		rayXV = 1000000;
-        		rayYV = 1000001;
-        	}
-        	
-        	if(dir==0 || dir==PI) {
-        		xOffsetH= 1000000; 
-        		yOffsetH= 1000001;
-        		rayXH = 1000000;
-        		rayYH = 1000001;
-        	}
-        	//left
-        	else if(dir<PI) {
-        		xOffsetH= 1; 
-        		yOffsetH= xOffsetH*nTan;
-        		rayXH=(int)map.player.width+1.00001; 
-        		rayYH=(map.player.width-rayXH)*-nTan+map.player.height;
-        	}
-        	//right
-        	else {
-        		xOffsetH= -1; 
-        		yOffsetH= xOffsetH*nTan;
-        		rayXH=(int)map.player.width-0.00001; 
-        		rayYH=(map.player.width-rayXH)*-nTan+map.player.height; 
-        	}
-        	//if(Math.sqrt((map.player.width-rayXV)*(map.player.width-rayXV)+(map.player.height-rayYV)*(map.player.height-rayYV)) > Math.sqrt((map.player.width-rayXH)*(map.player.width-rayXH)+(map.player.height-rayYH)*(map.player.height-rayYH))) {
-        	if(Math.abs(map.player.width-rayXV) > Math.abs(map.player.height-rayYH)) {
-        		rayX = rayXH;
-        		rayY = rayYH;
-        	}
-        	else {
-        		rayX = rayXV;
-        		rayY = rayYV;
-        	}
-        	
-        	if(Math.abs(xOffsetV) > Math.abs(yOffsetH)) {
-        		System.out.println("xOffsetH = " + xOffsetH + ", yOffsetH = " + yOffsetH);
-        		createCastLine(rayX+xOffsetH, rayY+yOffsetH, i, Color.WHITESMOKE);
-        	}
-        	else {
-        		System.out.println("xOffsetV = " + xOffsetV + ", yOffsetV = " + yOffsetV);
-        		createCastLine(rayX+xOffsetV, rayY+yOffsetV,  i, Color.WHITESMOKE);
-        	}
-    	}
-        	/*
-        	//down
-        	if(dir<MIDLOOK || dir>THIRDROTATION) {
-        		rayY=(int)map.player.height+1.0001; 
-        		rayX=(map.player.height-rayY)*-aTan+map.player.width; 
-        		yOffsetV=1; 
-        		xOffsetV=yOffsetV*aTan;
-        	}
-        	//up
-        	else if(dir>MIDLOOK && dir<THIRDROTATION) {
-        		rayY=(int)map.player.height-0.0001; 
-        		rayX=(map.player.height-rayY)*-aTan+map.player.width; 
-        		yOffsetV=-1; 
-        		xOffsetV=yOffsetV*aTan;
-        		}
-        	else {
-        		rayX=map.player.width; 
-        		rayY=map.player.height; 
-        		dof = maxdof;
-        		wallNumY = 0;
-        	}
-        	while(dof < maxdof){
-        		mapX = (int)rayX; mapY = (int)rayY;
-        		if(mapX < 0 || mapY < 0 || mapX >= map.map.length || mapY >= map.map[0].length) {
-        			dof = maxdof; 
-        			wallNumY = 0;
-        		}
-        		else if(map.map[mapX][mapY] != 0) {
-        			dof = maxdof+1;
-        			wallNumY = map.map[mapX][mapY];
-        		}
-        		else {
-        			rayX+=xOffsetV; 
-        			rayY+=yOffsetV; 
-        			dof++;}
-    		}
-        	if(dof == maxdof) {
-        		wallNumY = 0;
-        	}
-    		//System.out.println("Angle = " + dir + ", xCur = " + rayX + ", xOffset = " + xOffset + ", yCur = " + rayY + ", yOffset = " + yOffset + ", ");
-
-        	fRayX = rayX;
-        	fRayY = rayY;
-        	distY = Math.sqrt((rayX-map.player.width)*(rayX-map.player.width)+(rayY-map.player.height)*(rayY-map.player.height));
-
-        	dof = 0;
-        	
-        	if(dir==0 || dir==PI) {
-        		rayX=map.player.width; 
-        		rayY=map.player.height; 
-        		dof=maxdof;
-        		wallNumX = 0;
-        	}
-        	//left
-        	else if(dir<PI) {
-        		rayX=(int)map.player.width+1.00001; 
-        		rayY=(map.player.width-rayX)*-nTan+map.player.height; 
-        		xOffsetH= 1; 
-        		yOffsetH= xOffsetH*nTan;
-        	}
-        	//right
-        	else {
-        		rayX=(int)map.player.width-0.00001; 
-        		rayY=(map.player.width-rayX)*-nTan+map.player.height; 
-        		xOffsetH= -1; 
-        		yOffsetH= xOffsetH*nTan;
-        	}
-        	
-        	
-        	while(dof < maxdof){
-        		mapX = (int)rayX; mapY = (int)rayY;
-        		if(mapX < 0 || mapY < 0 || mapX >= map.map.length || mapY >= map.map[0].length) {
-        			dof = maxdof;
-        			wallNumX = 0;
-        		}
-        		else if(map.map[mapX][mapY] != 0) {
-        			dof = maxdof+1;
-        			wallNumX = map.map[mapX][mapY];
-        		}
-        		else {
-        			rayX+=xOffset; 
-        			rayY+=yOffset; 
-        			dof++;
-        		}
-        	}
-        	if(dof == maxdof) {
-        		wallNumX = 0;
-        	}
-        	//System.out.println("Angle = " + dir + ", xCur = " + rayX + ", xOffset = " + xOffset + ", yCur = " + rayY + ", yOffset = " + yOffset + ", ");	
-        	
-        	distX = Math.min(distY, Math.sqrt((rayX-map.player.width)*(rayX-map.player.width)+(rayY-map.player.height)*(rayY-map.player.height)));
-        	
-        	rectHeight = 1000/(Math.cos(map.player.dir-dir)*distX);
-    		
-    		//Rectangle Code//
-        	
-        	colorDist = Math.min(rectHeight, 1000)/1100;
-        	
-        	if(distX == distY) {
-        		if(dir>MIDLOOK && dir<THIRDROTATION) {
-        			wallSliceNum = (int)(16*(fRayX%1));
-        		}
-        		else {
-        			wallSliceNum = 15 - (int)(16*(fRayX%1));
-        		}
-        		try {
-        			img = wallPatterns[wallNumY][wallSliceNum];
-        		}
-        		catch(ArrayIndexOutOfBoundsException e) {
-        			img = Color.BLACK;
-        		}
-        		if(drawCastLines) {
-        			colorValues = colorList.get(wallNumY);
-                   	color = new Color(colorValues[0]*colorDist, colorValues[1]*colorDist, colorValues[2]*colorDist, 1);
-               		createCastLine(fRayX, fRayY, i, color);
-               	}
-        	}
-        	else {
-        		
-        		if(dir < PI) {
-        			wallSliceNum = (int)(16*(rayY%1));
-        		}
-        		else {
-        			wallSliceNum = 15 - (int)(16*(rayY%1));
-        		}
-        		try {
-        			img = wallPatterns[wallNumX][wallSliceNum];
-        		}
-        		catch(ArrayIndexOutOfBoundsException e) {
-        			img = Color.BLACK;
-        		}
-       			if(drawCastLines) {
-               		colorValues = colorList.get(wallNumX);
-                   	color = new Color(colorValues[0]*colorDist, colorValues[1]*colorDist, colorValues[2]*colorDist, 1);
-               		createCastLine(rayX, rayY, i, color);
-               	}
-        	}
-        	//System.out.println("Vert X: " + fRayX + ", Vert Y: " + fRayY + ", Horz X: "+ rayX + ", Horz Y: " + rayY);
-        	
-    		curRect = wallsList[i];
-    		curRect.dist = distX;
-    		curRect.setVisible(true);
-    		curRect.setHeight(rectHeight);
-    		curRect.setFill(img);
-    		curRect.setY(500-midLine-(rectHeight/2));
-    		
-    		dir -= fovOffsetAmount;
-    	}
-    	floor.setY(500-midLine);
-    	floor.setHeight(1000+midLine);
-    	sky.setHeight(500-midLine);
-    	*/
     }
     
     public void updateUpperWalls(double fovIn) {
@@ -971,7 +740,7 @@ public class UI extends Application{
     		map.player.hit(projectile);
     		updateUI();
     		return true;
-    	}/*
+    	}
     	for(Enemy enemy : enemyList) {
     		if(projectile.shooterId != enemy.id && projectile.checkCollide(enemy.x, enemy.y) < 0.3) {
     			enemyList.remove(enemy);
@@ -979,7 +748,7 @@ public class UI extends Application{
         		displayList.remove(enemy);
     			return true;
     		}
-    	}*/
+    	}
     	return false;
     }
     
@@ -1219,7 +988,7 @@ public class UI extends Application{
 			entityMiniMapList.add(enemy.minimap);
     	}
     	else {
-    		for(int i = 0; i < 0; i++) {
+    		for(int i = 0; i < enemyCount; i++) {
     			enemy = new Enemy((gridSize-4)*Math.random()+2, (gridSize-4)*Math.random()+2, img, mapSize, true);
     			enemyList.add(enemy);
     			displayList.add(enemy);
