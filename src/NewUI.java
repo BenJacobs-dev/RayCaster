@@ -38,6 +38,10 @@ public class NewUI extends Application{
 	DistComparator comparator;
 	final AtomicBoolean running = new AtomicBoolean(false);
 	
+	double minOffset = PI - FOV*DEGTORAD/2, maxOffset = PI + FOV*DEGTORAD/2;
+	
+	boolean first;
+	
 	public static void main(String[] args) {
 		Application.launch(args);
 	}
@@ -90,6 +94,16 @@ public class NewUI extends Application{
 		EventHandler<MouseEvent> moveMouse = this::mouseMove;
 		scene.addEventHandler(MouseEvent.MOUSE_MOVED, moveMouse);
 		scene.setCursor(Cursor.NONE);
+		scene.addEventHandler(MouseEvent.MOUSE_CLICKED, new EventHandler<MouseEvent>() {
+			public void handle(MouseEvent event) {
+//				System.out.println(map.player.dir);
+//				System.out.println(findAngle(map.player.width, map.player.height, gridSize*0.5, gridSize*0.5));
+//				System.out.println(getOffsetFromView(findAngle(map.player.width, map.player.height, gridSize*0.5, gridSize*0.5)));
+//				System.out.println();
+		    	first = true;
+			}
+			
+		});
 		
 		scene.setOnKeyPressed(new EventHandler<KeyEvent>() {
 		    @Override
@@ -121,20 +135,39 @@ public class NewUI extends Application{
 		for(int i = 0, j; i < map.map.length; i++)for(j = 0; j < map.map[i].length; j++)if(map.map[i][j] > 1000000) map.map[i][j] -= 1000000; 
     }
     
+    public double findAngle(double sX, double sY, double eX, double eY) {
+		eX -= sX;
+		eY -= sY;
+		double inRads = Math.atan2(-eY, eX);
+	    if (inRads < 0)
+	        inRads = -inRads;
+	    else
+	        inRads = 2 * Math.PI - inRads;
+	    if(inRads >= 2*Math.PI) {
+	    	inRads %= 2*Math.PI;
+	    }
+	    return inRads;
+	}
+    
+    public double getOffsetFromView(double dir) {
+    	double angle = dir - map.player.dir + PI;
+    	if (angle < 0)
+	        angle += FULLROTATION;
+	    if(angle >= 2*Math.PI) {
+	    	angle %= 2*Math.PI;
+	    }
+    	angle = angle > FULLROTATION ? angle - FULLROTATION : angle;
+    	return angle;
+    }
+    
+    public boolean inFOV(double dir) {
+    	double offset = getOffsetFromView(dir);
+    	return offset > minOffset && offset < maxOffset;
+    }
+    
     public void updateCastLinesUIIndividual(double dir) {
     	
-    	double min = dir+FOV*DEGTORAD/2, max = dir-FOV*DEGTORAD/2, test = map.player.dir;
-    	//if(min > PI && map.player.dir < PI) min -= FULLROTATION;
-    	//if(max < PI && map.player.dir > PI) max += FULLROTATION;
-    	if(!(min > test && max < test)) {
-//    		System.out.println();
-//    		System.out.println(dir);
-//    		System.out.println(map.player.dir);
-//    		System.out.println(min);
-//    		System.out.println(max);
-//    		System.out.println(test);
-    		return;
-    	}
+    	if(!inFOV(dir)) return;
     	
     	if(dir > FULLROTATION) {dir-=FULLROTATION;}
     	else if(dir < 0) {dir+=FULLROTATION;}
@@ -251,6 +284,10 @@ public class NewUI extends Application{
         	
         	if(mapX == Math.floor(map.player.width)) {
         		if(rayY > map.player.height) {
+        			if(first) {
+        				first = false;
+        				System.out.println("1");
+        			}
         			rightDir = FULLROTATION + Math.atan((mapX-map.player.width)/(mapY-map.player.height));
         			leftDir = Math.atan((mapX+1-map.player.width)/(mapY-map.player.height));
         			leftDist = Math.sqrt((mapX+1-map.player.width)*(mapX+1-map.player.width)+(mapY-map.player.height)*(mapY-map.player.height));
@@ -261,6 +298,10 @@ public class NewUI extends Application{
         			updateCastLinesUIIndividual(leftDir + 0.00000001); 
         		}
         		else {
+        			if(first) {
+        				first = false;
+        				System.out.println("2");
+        			}
         			leftDir = PI + Math.atan((mapX-map.player.width)/(mapY+1-map.player.height));
         			rightDir = PI + Math.atan((mapX+1-map.player.width)/(mapY+1-map.player.height));
         			leftDist = Math.sqrt((mapX-map.player.width)*(mapX-map.player.width)+(mapY+1-map.player.height)*(mapY+1-map.player.height));
@@ -273,6 +314,10 @@ public class NewUI extends Application{
         	}
         	else if(mapY == Math.floor(map.player.height)) {
         		if(rayX > map.player.width) {
+        			if(first) {
+        				first = false;
+        				System.out.println("3");
+        			}
         			leftDir = MIDLOOK - Math.atan((mapY-map.player.height)/(mapX-map.player.width));
         			rightDir = MIDLOOK - Math.atan((mapY+1-map.player.height)/(mapX-map.player.width));
         			leftDist = Math.sqrt((mapX-map.player.width)*(mapX-map.player.width)+(mapY-map.player.height)*(mapY-map.player.height));
@@ -283,6 +328,10 @@ public class NewUI extends Application{
                 	updateCastLinesUIIndividual(rightDir - 0.00000001);
         		}
         		else {
+        			if(first) {
+        				first = false;
+        				System.out.println("4");
+        			}
         			leftDir = THIRDROTATION - Math.atan((mapY-map.player.height)/(mapX+1-map.player.width));
                 	rightDir = THIRDROTATION - Math.atan((mapY+1-map.player.height)/(mapX+1-map.player.width));
                 	leftDist = Math.sqrt((mapX+1-map.player.width)*(mapX+1-map.player.width)+(mapY-map.player.height)*(mapY-map.player.height));
@@ -295,6 +344,10 @@ public class NewUI extends Application{
         	}
         	else if(rayX > map.player.width) {
         		if(rayY > map.player.height) {
+        			if(first) {
+        				first = false;
+        				System.out.println("5");
+        			}
         			leftDir = Math.atan((mapX+1-map.player.width)/(mapY-map.player.height));
         			middleDir = Math.atan((mapX-map.player.width)/(mapY-map.player.height));
         			rightDir = Math.atan((mapX-map.player.width)/(mapY+1-map.player.height));
@@ -308,6 +361,10 @@ public class NewUI extends Application{
                 	updateCastLinesUIIndividual(leftDir+0.00000001);
         		}
         		else {
+        			if(first) {
+        				first = false;
+        				System.out.println("6");
+        			}
         			leftDir = PI + Math.atan((mapX-map.player.width)/(mapY-map.player.height));
                 	middleDir = PI + Math.atan((mapX-map.player.width)/(mapY+1-map.player.height));
                 	rightDir = PI + Math.atan((mapX+1-map.player.width)/(mapY+1-map.player.height));
@@ -323,6 +380,10 @@ public class NewUI extends Application{
         	}
         	else {
         		if(rayY > map.player.height) {
+        			if(first) {
+        				first = false;
+        				System.out.println("7");
+        			}
         			leftDir = FULLROTATION + Math.atan((mapX+1-map.player.width)/(mapY+1-map.player.height));
                 	middleDir = FULLROTATION + Math.atan((mapX+1-map.player.width)/(mapY-map.player.height));
                 	rightDir = FULLROTATION + Math.atan((mapX-map.player.width)/(mapY-map.player.height));
@@ -336,6 +397,10 @@ public class NewUI extends Application{
                 	updateCastLinesUIIndividual(leftDir+0.00000001);
         		}
         		else {
+        			if(first) {
+        				first = false;
+        				System.out.println("8");
+        			}
         			leftDir = PI + Math.atan((mapX-map.player.width)/(mapY+1-map.player.height));
                 	middleDir = PI + Math.atan((mapX+1-map.player.width)/(mapY+1-map.player.height));
                 	rightDir = PI + Math.atan((mapX+1-map.player.width)/(mapY-map.player.height));
@@ -363,57 +428,83 @@ public class NewUI extends Application{
 //    		}
 			if(displayList.size() <= wallCounter) {
 				displayList.add(new WallTilePoly());
-				System.out.println(System.currentTimeMillis());
-    			displayList.get(displayList.size()-1).setFill(new Color(Math.random(),Math.random(),Math.random(),1));
+				
+    			displayList.get(displayList.size()-1).setFill(Color.RED);//new Color(Math.random(),Math.random(),Math.random(),1));
+    			displayList.get(displayList.size()-1).setStroke(Color.BLACK);
     		}
 			WallTilePoly wallTile = displayList.get(wallCounter++);
 			wallTile.dist = leftDist;
 			if(middleDir < -1000) {
 	    		ObservableList<Double> list = wallTile.getPoints();
+	    		double offsetL = PI-getOffsetFromView(leftDir), offsetR = PI-getOffsetFromView(rightDir), temp1, temp2, temp3, temp4;
+	    		temp1 = 750+750*((offsetL)/((FOV-10)*DEGTORAD/2));
+	    		temp2 = 750+750*((offsetR)/((FOV-10)*DEGTORAD/2));
+	    		temp3 = 500/(Math.cos(offsetL)*leftDist);
+	    		temp4 = 500/(Math.cos(offsetR)*rightDist);
 	    		list.clear();
-	    		list.add(750+750*((map.player.dir-leftDir)/((FOV-10)*DEGTORAD/2)));
-	    		list.add(500+500/(Math.cos(map.player.dir-leftDir)*leftDist));
-	    		list.add(750+750*((map.player.dir-leftDir)/((FOV-10)*DEGTORAD/2)));
-	    		list.add(500-500/(Math.cos(map.player.dir-leftDir)*leftDist));
-	    		list.add(750+750*((map.player.dir-rightDir)/((FOV-10)*DEGTORAD/2)));
-	    		list.add(500-500/(Math.cos(map.player.dir-rightDir)*rightDist));
-	    		list.add(750+750*((map.player.dir-rightDir)/((FOV-10)*DEGTORAD/2)));
-	    		list.add(500+500/(Math.cos(map.player.dir-rightDir)*rightDist));
+	    		list.add(temp1);
+	    		list.add(500+temp3);
+	    		list.add(temp1);
+	    		list.add(500-temp3);
+	    		list.add(temp2);
+	    		list.add(500-temp4);
+	    		list.add(temp2);
+	    		list.add(500+temp4);
 	    		//wallTile.setFill(new Color(Math.random(),Math.random(),Math.random(),1));
 	    		//displayList.add(wallTile);
 			}
 	    	else {
 	    		ObservableList<Double> list = wallTile.getPoints();
+//	    		list.clear();
+//	    		list.add(750+750*((map.player.dir-leftDir)/((FOV-10)*DEGTORAD/2)));
+//	    		list.add(500+500/(Math.cos(map.player.dir-leftDir)*leftDist));
+//	    		list.add(750+750*((map.player.dir-leftDir)/((FOV-10)*DEGTORAD/2)));
+//	    		list.add(500-500/(Math.cos(map.player.dir-leftDir)*leftDist));
+//	    		list.add(750+750*((map.player.dir-middleDir)/((FOV-10)*DEGTORAD/2)));
+//	    		list.add(500-500/(Math.cos(map.player.dir-middleDir)*middleDist));
+//	    		list.add(750+750*((map.player.dir-middleDir)/((FOV-10)*DEGTORAD/2)));
+//	    		list.add(500+500/(Math.cos(map.player.dir-middleDir)*middleDist));
+	    		double offsetL = PI-getOffsetFromView(leftDir), offsetM = PI-getOffsetFromView(middleDir), temp1, temp2, temp3, temp4;
+	    		temp1 = 750+750*((offsetL)/((FOV-10)*DEGTORAD/2));
+	    		temp2 = 750+750*((offsetM)/((FOV-10)*DEGTORAD/2));
+	    		temp3 = 500/(Math.cos(offsetL)*leftDist);
+	    		temp4 = 500/(Math.cos(offsetM)*middleDist);
 	    		list.clear();
-	    		list.add(750+750*((map.player.dir-leftDir)/((FOV-10)*DEGTORAD/2)));
-	    		list.add(500+500/(Math.cos(map.player.dir-leftDir)*leftDist));
-	    		list.add(750+750*((map.player.dir-leftDir)/((FOV-10)*DEGTORAD/2)));
-	    		list.add(500-500/(Math.cos(map.player.dir-leftDir)*leftDist));
-	    		list.add(750+750*((map.player.dir-middleDir)/((FOV-10)*DEGTORAD/2)));
-	    		list.add(500-500/(Math.cos(map.player.dir-middleDir)*middleDist));
-	    		list.add(750+750*((map.player.dir-middleDir)/((FOV-10)*DEGTORAD/2)));
-	    		list.add(500+500/(Math.cos(map.player.dir-middleDir)*middleDist));
+	    		list.add(temp1);
+	    		list.add(500+temp3);
+	    		list.add(temp1);
+	    		list.add(500-temp3);
+	    		list.add(temp2);
+	    		list.add(500-temp4);
+	    		list.add(temp2);
+	    		list.add(500+temp4);
 	    		//wallTile.setFill(new Color(Math.random(),Math.random(),Math.random(),1));
 	    		//displayList.add(wallTile);
 	    		
 	    		if(displayList.size() <= wallCounter) {
 	    			displayList.add(new WallTilePoly());
-	    			System.out.println(System.currentTimeMillis());
-	    			displayList.get(displayList.size()-1).setFill(new Color(Math.random(),Math.random(),Math.random(),1));
+	    			
+	    			displayList.get(displayList.size()-1).setFill(Color.RED);//new Color(Math.random(),Math.random(),Math.random(),1));
+	    			displayList.get(displayList.size()-1).setStroke(Color.BLACK);
 	    		}
 	    		
 	    		wallTile = displayList.get(wallCounter++);
 	    		list = wallTile.getPoints();
-	    		list.clear();
 	    		wallTile.dist = rightDist;
-	    		list.add(750+750*((map.player.dir-middleDir)/((FOV-10)*DEGTORAD/2)));
-	    		list.add(500-500/(Math.cos(map.player.dir-middleDir)*middleDist));
-	    		list.add(750+750*((map.player.dir-middleDir)/((FOV-10)*DEGTORAD/2)));
-	    		list.add(500+500/(Math.cos(map.player.dir-middleDir)*middleDist));
-	    		list.add(750+750*((map.player.dir-rightDir)/((FOV-10)*DEGTORAD/2)));
-	    		list.add(500+500/(Math.cos(map.player.dir-rightDir)*rightDist));
-	    		list.add(750+750*((map.player.dir-rightDir)/((FOV-10)*DEGTORAD/2)));
-	    		list.add(500-500/(Math.cos(map.player.dir-rightDir)*rightDist));
+	    		double offsetR = PI-getOffsetFromView(rightDir);
+	    		temp1 = 750+750*((offsetM)/((FOV-10)*DEGTORAD/2));
+	    		temp2 = 750+750*((offsetR)/((FOV-10)*DEGTORAD/2));
+	    		temp3 = 500/(Math.cos(offsetM)*middleDist);
+	    		temp4 = 500/(Math.cos(offsetR)*rightDist);
+	    		list.clear();
+	    		list.add(temp1);
+	    		list.add(500+temp3);
+	    		list.add(temp1);
+	    		list.add(500-temp3);
+	    		list.add(temp2);
+	    		list.add(500-temp4);
+	    		list.add(temp2);
+	    		list.add(500+temp4);
 	    		//wallTile.setFill(new Color(Math.random(),Math.random(),Math.random(),1));
 	    		//displayList.add(wallTile);
         	}
