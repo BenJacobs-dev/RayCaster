@@ -4,7 +4,7 @@ public class Player {
 	public final double FULLROTATION = 2*Math.PI, QUARTERROTATION = Math.PI/2;
 	public int mapWidth, mapHeight, shotTimer;
 	
-	public Player(float widthIn, float heightIn, int mapWidthIn, int mapHeightIn) {
+	public Player(double widthIn, double heightIn, int mapWidthIn, int mapHeightIn) {
 		dir = 0;
 		width = widthIn;
 		height = heightIn;

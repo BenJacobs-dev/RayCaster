@@ -25,7 +25,7 @@ import java.nio.file.*;
 
 public class UI extends Application{
 
-	private int mapSize = 300, gridSize = 25, fovMain = 90, wallCountMain = 1500, screenWidth = 1500, time, fpsCounter, maxdof = 15, enemyCount = gridSize, animate = 0;
+	private int mapSize = 300, gridSize = 15, fovMain = 90, wallCountMain = 1500, screenWidth = 1500, time, fpsCounter, maxdof = 15, enemyCount = gridSize, animate = 0;
 	private boolean drawCastLines, makeMaze = false, useWallPatterns = true;
 
 	private Stage stage;

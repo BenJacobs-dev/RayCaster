@@ -20,14 +20,11 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.*;
 
-import com.sun.org.apache.bcel.internal.generic.IF_ACMPEQ;
-import com.sun.prism.j2d.J2DPipeline;
-
 import java.io.*;
 import java.nio.file.*;
 
 
-public class NewUI extends Application{
+public class NewNewUI extends Application{
 
 	int displayHeight = 1000, gridSize = 10, mapSize = 400/gridSize, FOV = 100, wallCounter, displayCounter = 0;
 
@@ -206,6 +203,7 @@ public class NewUI extends Application{
 //    	}
     	playerMoveUpdateGrid();
     	updateDirLine();
+    	calcDistancesAndAngles(player.dir);
     	updateCastLines();
 //    	updateEnemies(fovMain);
 //    	updateProjectiles(fovMain);
@@ -223,7 +221,7 @@ public class NewUI extends Application{
 		floor.setY(500-midLine);
     	floor.setHeight(1000+midLine);
     	sky.setHeight(500-midLine);
-		updateCastLinesUIIndividual(dir);
+    	updateWalls(player.dir);
 		List<WallTilePoly> tempList = new ArrayList<WallTilePoly>(displayList.subList(0, wallCounter));
 		Collections.sort(tempList, comparator);
 		//System.out.println(tempList.size());
@@ -259,6 +257,85 @@ public class NewUI extends Application{
     public boolean inFOV(double dir) {
     	double offset = getOffsetFromView(dir);
     	return offset > minOffset && offset < maxOffset;
+    }
+    
+    public void calcDistancesAndAngles(double dir) {
+    	double deltaWidth, deltaHeight;
+    	int mapIndexWidth, mapIndexHeight;
+    	for(int i = 0, j = 0; i < range; i++) {
+    		deltaWidth = player.width%1 + i - range/2;
+    		
+    		mapIndexWidth = (int)player.width + i - range/2;
+    		for(j = 0; j < range; j++) {
+    			// distance
+    			deltaHeight = player.height%1 + j - range/2;
+    			mapIndexHeight = (int)player.height + j - range/2;
+    			if(isValidIndex2D(mapIndexWidth, mapIndexHeight, map.map)) {
+    				walls[i][j] = map.map[mapIndexWidth][mapIndexHeight]; 
+    				distances[i][j] = getDistance(0, 0, deltaWidth, deltaHeight); 
+        			angles[i][j] =  getAngle(0, 0, deltaHeight, deltaWidth);
+        			System.out.print(distances[i][j]+ "  " );
+    			}
+    			else {
+    				walls[i][j] = 0;
+    				angles[i][j] = 0;
+    				distances[i][j] = 0; 
+    			}
+    			 
+    		}
+    		System.out.println();
+    	}
+    }
+    
+    public double getDistance(double x1, double y1, double x2, double y2) {
+    	double diffX = x1 - x2, diffY = y1 - y2;
+    	return Math.sqrt(diffX*diffX+diffY*diffY);
+    }
+    
+    public boolean isValidIndex2D(int i, int j, int array[][]) {
+    	return i >= 0 && j >= 0 && i < array.length && j < array[0].length;
+    }
+    
+    public void updateWalls(double dir) {
+    	for(int i = 0, j = 0; i < range-1; i++) {
+    		for(j = 0; j < range-1; j++) {
+    			if(walls[i][j] != 0 && inFOV(angles[i][j])) {
+    				createCastLineNew((int)player.width + i - range/2, (int)player.height + j - range/2, Color.BLUE);
+    				createWallTile(distances[i][j], angles[i][j], distances[i+1][j], angles[i+1][j]);
+    				createWallTile(distances[i][j], angles[i][j], distances[i][j+1], angles[i][j+1]);
+    				createWallTile(distances[i+1][j+1], angles[i+1][j+1], distances[i+1][j], angles[i+1][j]);
+    				createWallTile(distances[i+1][j+1], angles[i+1][j+1], distances[i][j+1], angles[i][j+1]);
+    			}
+    		}
+    	}
+    }
+    
+    public void createWallTile(double dist1, double angle1, double dist2, double angle2) {
+    	if(displayList.size() <= wallCounter) {
+			displayList.add(new WallTilePoly());
+			displayList.get(displayList.size()-1).setStroke(Color.BLACK);
+		}
+		WallTilePoly wallTile = displayList.get(wallCounter++);
+		wallTile.dist = Math.max(dist1, dist2);
+		double colorDist;
+		ObservableList<Double> list = wallTile.getPoints();
+		double offsetL = PI-getOffsetFromView(angle1), offsetR = PI-getOffsetFromView(angle2), temp1, temp2, temp3, temp4;
+		temp1 = displayWidthHalf+displayWidthHalf*((offsetL)/((FOV-10)*DEGTORAD/2));
+		temp2 = displayWidthHalf+displayWidthHalf*((offsetR)/((FOV-10)*DEGTORAD/2));
+		temp3 = Math.abs(displayHeightHalf/(Math.cos(offsetL)*dist1));
+		temp4 = Math.abs(displayHeightHalf/(Math.cos(offsetR)*dist2));
+		list.clear();
+		list.add(temp1);
+		list.add(displayHeightHalf-midLine+temp3);
+		list.add(temp1);
+		list.add(displayHeightHalf-midLine-temp3);
+		list.add(temp2);
+		list.add(displayHeightHalf-midLine-temp4);
+		list.add(temp2);
+		list.add(displayHeightHalf-midLine+temp4);
+		
+		colorDist = Math.min(temp3, 1000)/1100;
+		wallTile.setFill(new Color(colorDist, 0, 0, 1));
     }
     
     public void updateCastLinesUIIndividual(double dir) {
@@ -638,6 +715,12 @@ public class NewUI extends Application{
     }
     
     public void createCastLine(double x, double y, Paint color) {
+//    	Line castLine = new Line(player.width*mapSize, player.height*mapSize, x*mapSize, y*mapSize);
+//    	castLinesList.add(castLine);
+//    	castLine.setStroke(color);
+    }
+    
+    public void createCastLineNew(double x, double y, Paint color) {
     	Line castLine = new Line(player.width*mapSize, player.height*mapSize, x*mapSize, y*mapSize);
     	castLinesList.add(castLine);
     	castLine.setStroke(color);
@@ -664,6 +747,18 @@ public class NewUI extends Application{
     	//keyActions.put(KeyCode.DOWN, () -> {vertLookPos = Math.max(0, vertLookPos-0.1);});
     	keyActions.put(KeyCode.LEFT, () -> {player.rotate(0.1);});
     	keyActions.put(KeyCode.RIGHT, () -> {player.rotate(-0.1);});
+    	keyActions.put(KeyCode.T, () -> printAngles());
+    }
+    
+    public void printAngles() {
+    	for(int i = 0; i < range; i++) {
+    		for(int j = 0; j < range; j++) {
+    			double val = ((int)(angles[i][j]*1000))/1000.0;
+    			System.out.print(val);
+    			System.out.print("  ");
+    		}
+    		System.out.println();
+    	}
     }
     
     public void stop() {

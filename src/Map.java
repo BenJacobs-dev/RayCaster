@@ -9,7 +9,7 @@ public class Map {
 	public Player player;
 	public int mapCounter = 0;
 	
-	public Map(int width, int height, double floorRatio, int wallPatternCount) {
+	public Map(int width, int height, double floorRatio, int wallPatternCount, Player playerIn) {
 		map = new int[width][height];
 		upperMap = new int[width][height];
 		int ran;
@@ -30,11 +30,11 @@ public class Map {
 				}
 			}
 		}
-		player = new Player(width/2, height/2, width, height);
+		player = playerIn;
 	}
 	
-	private Map(int size, int wallPatternCount) {
-		
+	private Map(int size, int wallPatternCount, Player playerIn) {
+		player = playerIn;
 		map = new int[size][size];
 		upperMap = new int[size][size];
 		for(int i = 0, j; i < size; i++) {
@@ -50,7 +50,8 @@ public class Map {
 		}
 	}
 	
-	public Map() {
+	public Map(Player playerIn) {
+		player = playerIn;
 		map = new int[][] 
 		   {{1,1,1,1,1,1,1,1,1,1},
 			{1,0,0,0,0,0,0,0,0,1},
@@ -73,7 +74,6 @@ public class Map {
 			{1,0,0,0,0,0,0,0,0,1},
 			{1,0,0,0,0,0,0,0,0,1},
 			{1,1,1,1,1,1,1,1,1,1}};
-		player = new Player(5, 5, 10, 10);
 	}
 	
 	public String toString() {
@@ -93,8 +93,10 @@ public class Map {
 		return output.toString();
 	}
 	
-	public static Map makeMaze(int size, int wallPatternCount) {
-		Map output = new Map(size, wallPatternCount);
+	public static Map makeMaze(int size, int wallPatternCount, Player playerIn) {
+		playerIn.width = 1;
+		playerIn.height = 1;
+		Map output = new Map(size, wallPatternCount, playerIn);
 		output.map[1][1] = 0;
 		LinkedList<int[]> pos = new LinkedList<>();
 		ArrayList<Integer> possibleSides = new ArrayList<>();
@@ -139,7 +141,6 @@ public class Map {
 			}
 			possibleSides.clear();
 		}
-		output.player = new Player(1, 1, size, size);
 		return output;
 	}
 }
