@@ -8,8 +8,10 @@ public class Map {
 	public int[][] upperMap;
 	public Player player;
 	public int mapCounter = 0;
+	public Entity[] entities;
+	public String name;
 	
-	public Map(int width, int height, double floorRatio, int wallPatternCount, Player playerIn) {
+	public Map(int width, int height, double floorRatio, int wallPatternCount, Player playerIn, String mapName) {
 		map = new int[width][height];
 		upperMap = new int[width][height];
 		int ran;
@@ -31,9 +33,10 @@ public class Map {
 			}
 		}
 		player = playerIn;
+		name = mapName;
 	}
 	
-	private Map(int size, int wallPatternCount, Player playerIn) {
+	private Map(int size, int wallPatternCount, Player playerIn, String mapName) {
 		player = playerIn;
 		map = new int[size][size];
 		upperMap = new int[size][size];
@@ -48,6 +51,7 @@ public class Map {
 				}
 			}
 		}
+		name = mapName;
 	}
 	
 	public Map(Player playerIn) {
@@ -74,6 +78,7 @@ public class Map {
 			{1,0,0,0,0,0,0,0,0,1},
 			{1,0,0,0,0,0,0,0,0,1},
 			{1,1,1,1,1,1,1,1,1,1}};
+		name = "test";
 	}
 	
 	public String toString() {
@@ -93,10 +98,38 @@ public class Map {
 		return output.toString();
 	}
 	
+	public static Map makeCircle(int size, int wallPatternCount, Player playerIn, boolean inverted) {
+		Map output = new Map(size, wallPatternCount, playerIn, "Circle");
+		double middle = size/2.0;
+		double radius = size/2.5;
+		for(int i = 0; i < size; i++){
+			for(int j = 0; j < size; j++){
+				if(i == 0 || i == size-1 || j == 0 || j == size-1) {
+					output.upperMap[i][j] = 1;
+				}
+				else if((i-middle)*(i-middle)+(j-middle)*(j-middle) < radius*radius) {
+					output.map[i][j] = inverted ? 0 : 1;
+				}
+				else {
+					output.map[i][j] = inverted ? 1 : 0;
+				}
+			}
+		}
+		if(inverted){
+			playerIn.width = middle;
+			playerIn.height = middle;
+		}
+		else {
+			playerIn.width = 1.5;
+			playerIn.height = 1.5;
+		}
+		return output;
+	}
+
 	public static Map makeMaze(int size, int wallPatternCount, Player playerIn) {
-		playerIn.width = 1;
-		playerIn.height = 1;
-		Map output = new Map(size, wallPatternCount, playerIn);
+		playerIn.width = 1.5;
+		playerIn.height = 1.5;
+		Map output = new Map(size, wallPatternCount, playerIn, "Maze");
 		output.map[1][1] = 0;
 		LinkedList<int[]> pos = new LinkedList<>();
 		ArrayList<Integer> possibleSides = new ArrayList<>();

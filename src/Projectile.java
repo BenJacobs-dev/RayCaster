@@ -6,8 +6,9 @@ public class Projectile extends Circle implements DistComparable {
 	public double x, y, dir, speed, dist;
 	public Circle minimap;
 	public int shooterId;
+	public int damage;
 	
-	public Projectile(double startX, double startY, double startDir, Color color, double mapSize, double speedIn, int[][] mapIn, int shooterIdIn) {
+	public Projectile(double startX, double startY, double startDir, Color color, double mapSize, double speedIn, int[][] mapIn, int shooterIdIn, int damageIn) {
 		super(100, color);
 		x = startX;
 		y = startY;
@@ -17,7 +18,11 @@ public class Projectile extends Circle implements DistComparable {
 		dist = 0;
 		move(mapIn);
 		move(mapIn);
+		move(mapIn);
+		move(mapIn);
+		move(mapIn);
 		shooterId = shooterIdIn;
+		damage = damageIn;
 	}
 	
 	public int move(int[][] map) {
