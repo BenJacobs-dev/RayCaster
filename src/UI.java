@@ -19,20 +19,22 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class UI extends Application{
 
-	int displayHeight = 1300, gridSize = 30, mapSize = 400/gridSize, FOV = 110, wallCounter, rfCounter;
+	int displayHeight = 1300, gridSize = 10, mapSize = 400/gridSize, FOV = 110, wallCounter, rfCounter, linesCounter;
 
 	int displayWidth = (int)(displayHeight*1.5), displayHeightHalf = displayHeight>>1, displayWidthHalf = displayWidth>>1;
 	
 	Stage stage;
 	Level level;
 	Player player;
-	ObservableList<Node> nodeList, mapGridList, castLinesList, gameWorldList, entityMiniMapList, uiList;
+	ObservableList<Node> nodeList, mapGridList, castLinesList, gameWorldList, entityMiniMapList, uiList, linesList;
 	ArrayList<Node> displayList;
-	ArrayList<WallTilePoly> wallTilePolyList, roofTileList, floorTileList;
+	ArrayList<WallTilePoly> wallTilePolyList, rfTileList;
 	ArrayList<Projectile> projectileList;
 	ArrayList<Enemy> enemyList;
 	ArrayList<StationaryEffect> sEffectList;
 	ArrayList<int[]> rfIndexList;
+	ArrayList<Line> cornerLinesList;
+	double[][][] rfDistDirList;
 	Circle playerSprite;
 	Line dirLine;
 	final double MIDLOOK = Math.PI/2, FULLROTATION = Math.PI*2, THIRDROTATION = Math.PI*3/2, PI = Math.PI, DEGTORAD = Math.PI/180;
@@ -52,9 +54,9 @@ public class UI extends Application{
 	
 	double midLine, minOffset = PI - FOV*DEGTORAD/2, maxOffset = PI + FOV*DEGTORAD/2;
 	
-	int enemyCount = 2, time, fpsCounter;
+	int enemyCount = 0, time, fpsCounter;
 	
-	boolean first, makeMaze = false, makeCircle = true, invertedCircle = false, drawCastLines = false;
+	boolean first, makeMaze = false, makeCircle = false, invertedCircle = false, drawCastLines = false;
 	
 	public static void main(String[] args) {
 		Application.launch(args);
@@ -88,11 +90,14 @@ public class UI extends Application{
 		createKeyActions();
 		comparator = new DistComparator();
 		wallTilePolyList = new ArrayList<>();
+		rfTileList = new ArrayList<>();
 		projectileList = new ArrayList<>();
 		enemyList = new ArrayList<>();
 		sEffectList = new ArrayList<>();
 		displayList = new ArrayList<>();
 		rfIndexList = new ArrayList<>();
+		cornerLinesList = new ArrayList<>();
+		rfDistDirList = new double[gridSize][gridSize][3];
 
 		createExplosionAnimation();
 		
@@ -100,7 +105,7 @@ public class UI extends Application{
 		floor.setY(displayHeightHalf-1);
 		sky = new Rectangle(displayWidth, displayHeightHalf+2, new LinearGradient(0, 0, 0, 0.8, true, CycleMethod.NO_CYCLE, new Stop[] { new Stop(0, Color.LIGHTBLUE), new Stop(1, Color.BLACK)}));
 		
-		Group group = new Group(), mapGridGroup = new Group(), displayGroup = new Group(), spriteMiniMap = new Group(), ui = new Group();
+		Group group = new Group(), mapGridGroup = new Group(), displayGroup = new Group(), spriteMiniMap = new Group(), ui = new Group(), linesGroup = new Group();
 		castLines = new Group();
 		uiList = ui.getChildren();
 		nodeList = group.getChildren();
@@ -108,6 +113,7 @@ public class UI extends Application{
 		castLinesList = castLines.getChildren();
 		gameWorldList = displayGroup.getChildren();
 		entityMiniMapList = spriteMiniMap.getChildren();
+		linesList = linesGroup.getChildren();
 		
 		playerSprite = new Circle(mapSize/2, Color.BLUE);
 		playerMoveUpdateGrid();
@@ -121,8 +127,8 @@ public class UI extends Application{
 		fpsCounterText = new Text(displayWidth-100, 40, "60");
 		fpsCounterText.setFont(bigFont);
 
-		nodeList.add(floor);
-		nodeList.add(sky);
+		// nodeList.add(floor);
+		// nodeList.add(sky);
 		nodeList.add(displayGroup);
 		nodeList.add(mapGridGroup);
 		nodeList.add(spriteMiniMap);
@@ -131,6 +137,7 @@ public class UI extends Application{
 		nodeList.add(castLines);
 		nodeList.add(fpsCounterText);
 		nodeList.add(ui);
+		nodeList.add(linesGroup);
 		
 		createMapGrid();
 		makeEnemyList();
@@ -231,7 +238,9 @@ public class UI extends Application{
 		updateEnemies();
 		updateProjectiles();
 		updateStationaryEffects();
-		updateFloorAndRoof();
+		//updateFloorAndRoof();
+		updateMap();
+		updateCornerLines();
 		updateDisplay();
 		updateUI();
 //    	Collections.sort(displayList, comparator);
@@ -245,6 +254,7 @@ public class UI extends Application{
 		displayList.addAll(projectileList);
 		displayList.addAll(enemyList);
 		displayList.addAll(sEffectList);
+		// displayList.addAll(rfTileList.subList(0, rfCounter));
 		Collections.sort(displayList, comparator);
 		gameWorldList.setAll(displayList);
 	}
@@ -256,9 +266,14 @@ public class UI extends Application{
 		rfCounter = 0;
 		double dir = player.dir;
 		midLine = displayHeightHalf*(MIDLOOK-vertLookPos);
-		floor.setY(displayHeightHalf-midLine);
-    	floor.setHeight(displayHeight+midLine);
-    	sky.setHeight(displayHeightHalf-midLine);
+		// floor.setY(displayHeightHalf-midLine);
+    	// floor.setHeight(displayHeight+midLine);
+    	// sky.setHeight(displayHeightHalf-midLine);
+		for(int i = 0; i < rfDistDirList.length; i++){
+			for(int j = 0; j < rfDistDirList[0].length; j++){
+				rfDistDirList[i][j][2] = -1;
+			}
+		}
 		updateCastLinesUIIndividual(dir);
 		// List<WallTilePoly> tempList = new ArrayList<WallTilePoly>(wallTilePolyList.subList(0, wallCounter));
 		// Collections.sort(tempList, comparator);
@@ -352,12 +367,12 @@ public class UI extends Application{
         		else {
         			rayX+=xOffset; 
         			rayY+=yOffset;
-					if(rfIndexList.size() <= rfCounter) {
-						rfIndexList.add(new int[2]);
+					if(!(mapX <= 0 || mapY <= 0 || mapX >= map.map.length-1 || mapY >= map.map[0].length-1) && rfDistDirList[mapX][mapY][2] != 1) {
+						calcDistAndDir(mapX, mapY, 1);
+						calcDistAndDir(mapX, mapY+1, 0);
+						calcDistAndDir(mapX+1, mapY+1, 0);
+						calcDistAndDir(mapX+1, mapY, 0 );
 					}
-					int[] rfIndex = rfIndexList.get(rfCounter++);
-					rfIndex[0] = mapX;
-					rfIndex[1] = mapY;
         		}
     		}
     		//System.out.println("Angle = " + dir + ", xCur = " + rayX + ", xOffset = " + xOffset + ", yCur = " + rayY + ", yOffset = " + yOffset + ", ");
@@ -398,13 +413,13 @@ public class UI extends Application{
         		}
         		else {
         			rayX+=xOffset; 
-        			rayY+=yOffset; 
-					if(rfIndexList.size() <= rfCounter) {
-						rfIndexList.add(new int[2]);
+					rayY+=yOffset;
+					if(!(mapX <= 0 || mapY <= 0 || mapX >= map.map.length-1 || mapY >= map.map[0].length-1) && rfDistDirList[mapX][mapY][2] != 1) {
+						calcDistAndDir(mapX, mapY, 1);
+						calcDistAndDir(mapX, mapY+1, 0);
+						calcDistAndDir(mapX+1, mapY+1, 0);
+						calcDistAndDir(mapX+1, mapY, 0 );
 					}
-					int[] rfIndex = rfIndexList.get(rfCounter++);
-					rfIndex[0] = mapX;
-					rfIndex[1] = mapY;
         		}
         	}
         	
@@ -417,6 +432,7 @@ public class UI extends Application{
         		rayX = fRayX;
         		rayY = fRayY;
         	}
+
         	mapX = (int)rayX;
         	mapY = (int)rayY;
 
@@ -707,7 +723,7 @@ public class UI extends Application{
     			if(wallContact != -2) {
 					if(projectile.x >= 1 && projectile.y >= 1 && projectile.x < map.map.length-1 && projectile.y < map.map[0].length-1){
 						map.map[(int)projectile.x][(int)projectile.y] = 0;
-						updateMapTile((int)projectile.x, (int)projectile.y, wallContact);
+						updateMapTile((int)projectile.x, (int)projectile.y, Color.DARKSLATEGRAY);
 					}
     				makeExplosion(projectile.x, projectile.y);
     			}
@@ -721,10 +737,10 @@ public class UI extends Application{
     		displayList.remove(spriteDelete);
     	}
     }
-    
-    public void updateMapTile(int x, int y, int color){
+
+	public void updateMapTile(int x, int y, Color color){
 		Map map = level.getCurMap();
-    	((Shape)mapGridList.get(x*map.map.length+y)).setFill(Color.DARKSLATEGRAY);
+    	((Shape)mapGridList.get(x*map.map.length+y)).setFill(color);
     }
 
     public boolean checkProjectileDamage(Projectile projectile) {
@@ -860,8 +876,139 @@ public class UI extends Application{
     	}  	
     }
 
+	public void calcDistAndDir(int x, int y, int tiled){
+		double[] distDir = rfDistDirList[x][y];
+		if(distDir[2] != -1) {
+			distDir[2] = Math.max(distDir[2], tiled);
+			return;
+		}
+		distDir[0] = PI + Math.atan((x-player.width)/(y-player.height));
+		distDir[1]  = Math.sqrt((x-player.width)*(y-player.width)+(x-player.height)*(y-player.height));
+		distDir[2] = tiled;
+	}
+
+	public void print2DArray(double[][][] array){
+		for(int i = 0; i < array.length; i++){
+			for(int j = 0; j < array[0].length; j++) {
+				System.out.print(array[j][i][2] == -1 ? "■" : array[j][i][2] == 0 ? "A" : "▩");
+			}
+			System.out.println();
+		}
+		System.out.println();
+	}
+
+	public void updateMap(){
+		for(int i = 0; i < rfDistDirList.length; i++){
+			for(int j = 0; j < rfDistDirList[0].length; j++) {
+				if(rfDistDirList[i][j][2] == -1) {
+					updateMapTile(i, j, Color.DARKSLATEGRAY);
+				}
+				else if(rfDistDirList[i][j][2] == 0) {
+					updateMapTile(i, j, Color.DARKGRAY);
+				}
+				else {
+					updateMapTile(i, j, Color.GRAY);
+				}
+			}
+		}
+	}
+	
+	public void updateCornerLines(){
+		linesCounter = 0;
+		for(int i = 0; i < rfDistDirList.length; i++){
+			for(int j = 0; j < rfDistDirList[0].length; j++) {
+				if(cornerLinesList.size() <= linesCounter) {
+					cornerLinesList.add(new Line());
+					cornerLinesList.get(cornerLinesList.size()-1).setStroke(Color.BLACK);
+				}
+				Line curLine = cornerLinesList.get(linesCounter++);
+				double[] distDir1 = rfDistDirList[i][j];
+				double offset1 = PI-getOffsetFromView(distDir1[1]);
+				double pos1x = displayWidthHalf+displayWidthHalf*((offset1)/((FOV-10)*DEGTORAD/2));
+				double pos1y = Math.abs(displayHeightHalf/(Math.cos(offset1)*distDir1[0]));
+				curLine.setEndX(pos1x);
+				curLine.setEndY(displayHeightHalf-midLine+pos1y);
+				curLine.setStartX(pos1x);
+				curLine.setStartY(displayHeightHalf-midLine-pos1y);
+			}
+		}
+		linesList.setAll(cornerLinesList.subList(0, linesCounter));
+	}
+
 	public void updateFloorAndRoof(){
 		//System.out.println("Update Floor and Roof");
+		rfCounter = 0;
+		Map map = level.getCurMap();
+
+		for(int i = 0; i < rfDistDirList.length; i++){
+			for(int j = 0; j < rfDistDirList[0].length; j++){
+				if((i <= 0 || j <= 0 || i >= map.map.length-1 || j >= map.map[0].length-1) && rfDistDirList[i][j][2] != 1) {
+					continue;
+				}
+				if(false){
+
+				double colorDist = Math.min(rfDistDirList[i][j][0], 1000)/2000;
+				Color tileColor = new Color(0.5+colorDist, 0, 0, 1);
+				updateMapTile(i, j, tileColor);
+				
+				if(rfTileList.size() <= rfCounter) {
+					rfTileList.add(new WallTilePoly());
+					rfTileList.get(rfTileList.size()-1).setStroke(Color.BLACK);
+				}
+				WallTilePoly roofTile = rfTileList.get(rfCounter++);
+				roofTile.dist = 10000000;
+				roofTile.setFill(tileColor);
+
+				double[] distDir1 = rfDistDirList[i][j];
+				double[] distDir2 = rfDistDirList[i+1][j];
+				double[] distDir3 = rfDistDirList[i][j+1];
+				double[] distDir4 = rfDistDirList[i+1][j+1];
+				double offset1 = PI-getOffsetFromView(distDir1[1]);
+				double offset2 = PI-getOffsetFromView(distDir2[1]);
+				double offset3 = PI-getOffsetFromView(distDir3[1]);
+				double offset4 = PI-getOffsetFromView(distDir4[1]);
+				double pos1x = displayWidthHalf+displayWidthHalf*((offset1)/((FOV-10)*DEGTORAD/2));
+				double pos1y = Math.abs(displayHeightHalf/(Math.cos(offset1)*distDir1[0]));
+				double pos2x = displayWidthHalf+displayWidthHalf*((offset2)/((FOV-10)*DEGTORAD/2));
+				double pos2y = Math.abs(displayHeightHalf/(Math.cos(offset2)*distDir2[0]));
+				double pos3x = displayWidthHalf+displayWidthHalf*((offset3)/((FOV-10)*DEGTORAD/2));
+				double pos3y = Math.abs(displayHeightHalf/(Math.cos(offset3)*distDir3[0]));
+				double pos4x = displayWidthHalf+displayWidthHalf*((offset4)/((FOV-10)*DEGTORAD/2));
+				double pos4y = Math.abs(displayHeightHalf/(Math.cos(offset4)*distDir4[0]));
+				ObservableList<Double> list = roofTile.getPoints();
+				list.clear();
+				list.add(pos1x);
+				list.add(displayHeightHalf-midLine+pos1y);
+				list.add(pos2x);
+				list.add(displayHeightHalf-midLine+pos2y);
+				list.add(pos3x);
+				list.add(displayHeightHalf-midLine+pos3y);
+				list.add(pos4x);
+				list.add(displayHeightHalf-midLine+pos4y);
+
+				if(rfTileList.size() <= rfCounter) {
+					rfTileList.add(new WallTilePoly());
+					rfTileList.get(rfTileList.size()-1).setStroke(Color.BLACK);
+				}
+				WallTilePoly floorTile = rfTileList.get(rfCounter++);
+				floorTile.dist = 10000000;
+				floorTile.setFill(tileColor);
+				
+				list = floorTile.getPoints();
+				list.clear();
+				list.add(pos1x);
+				list.add(displayHeightHalf-midLine-pos1y);
+				list.add(pos2x);
+				list.add(displayHeightHalf-midLine-pos2y);
+				list.add(pos3x);
+				list.add(displayHeightHalf-midLine-pos3y);
+				list.add(pos4x);
+				list.add(displayHeightHalf-midLine-pos4y);
+				}
+			}
+		}
+		// System.out.println(rfIndexList.size());
+		// System.out.println(rfTileList.size());
 	}
 
 	public void makeEnemyList() {
@@ -979,7 +1126,7 @@ public class UI extends Application{
 	}
 
 	public void openMenu() {
-		System.out.println("OPEN MENU");
+		print2DArray(rfDistDirList);
 	}
     
     public void createExplosionAnimation() {
